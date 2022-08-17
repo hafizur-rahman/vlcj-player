@@ -19,6 +19,7 @@
 
 package uk.co.caprica.vlcjplayer.view.main;
 
+import static java.util.stream.Collectors.groupingBy;
 import static uk.co.caprica.vlcjplayer.Application.application;
 import static uk.co.caprica.vlcjplayer.Application.resources;
 import static uk.co.caprica.vlcjplayer.view.action.Resource.resource;
@@ -28,35 +29,28 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.FileReader;
+import java.net.URL;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.prefs.Preferences;
+import java.util.stream.Collectors;
 
-import javax.swing.AbstractAction;
-import javax.swing.AbstractButton;
-import javax.swing.Action;
-import javax.swing.ActionMap;
-import javax.swing.ButtonGroup;
-import javax.swing.InputMap;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JComponent;
-import javax.swing.JFileChooser;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JRadioButtonMenuItem;
-import javax.swing.JSeparator;
-import javax.swing.KeyStroke;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreeSelectionModel;
 
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
 import net.miginfocom.swing.MigLayout;
+import org.apache.commons.lang3.StringUtils;
 import uk.co.caprica.vlcj.media.TrackType;
 import uk.co.caprica.vlcj.player.base.LogoPosition;
 import uk.co.caprica.vlcj.player.base.MarqueePosition;
@@ -117,6 +111,7 @@ public final class MainFrame extends BaseFrame {
 
     private final JMenuBar menuBar;
 
+    private final JMenu studyItemMenu;
     private final JMenu mediaMenu;
     private final JMenu mediaRecentMenu;
 
@@ -133,9 +128,9 @@ public final class MainFrame extends BaseFrame {
 
     private final JMenu videoMenu;
     private final JMenu videoTrackMenu;
-    private final JMenu videoZoomMenu;
-    private final JMenu videoAspectRatioMenu;
-    private final JMenu videoCropMenu;
+//    private final JMenu videoZoomMenu;
+//    private final JMenu videoAspectRatioMenu;
+//    private final JMenu videoCropMenu;
     private final JMenu videoOutputMenu;
 
     private final JMenu subtitleMenu;
@@ -159,12 +154,14 @@ public final class MainFrame extends BaseFrame {
 
     private final JPanel bottomPane;
 
+    private final JPanel studyItemsPane;
+
 //    private final MouseMovementDetector mouseMovementDetector;
 
     private final List<RendererItem> renderers = new ArrayList<>();
 
     public MainFrame() {
-        super("vlcj player");
+        super("Study");
 
         MediaPlayerActions mediaPlayerActions = application().mediaPlayerActions();
 
@@ -294,6 +291,22 @@ public final class MainFrame extends BaseFrame {
         mediaMenu.add(new JMenuItem(mediaQuitAction));
         menuBar.add(mediaMenu);
 
+        StandardAction studyPlaylistOpenAction = new StandardAction(resource("menu.study.item.openFile")) {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (JFileChooser.APPROVE_OPTION == fileChooser.showOpenDialog(MainFrame.this)) {
+                    File file = fileChooser.getSelectedFile();
+                    String mrl = file.getAbsolutePath();
+
+                    System.out.println(mrl);
+                }
+            }
+        };
+        studyItemMenu = new JMenu(resource("menu.study").name());
+        studyItemMenu.setMnemonic(resource("menu.study").mnemonic());
+        studyItemMenu.add(new JMenuItem(studyPlaylistOpenAction));
+        //menuBar.add(studyItemMenu);
+
         playbackMenu = new JMenu(resource("menu.playback").name());
         playbackMenu.setMnemonic(resource("menu.playback").mnemonic());
 
@@ -301,18 +314,18 @@ public final class MainFrame extends BaseFrame {
 
         // Chapter could be an "on-demand" menu too, and it could be with radio buttons...
 
-        playbackMenu.add(playbackTitleMenu);
+        //playbackMenu.add(playbackTitleMenu);
 
         playbackChapterMenu = new ChapterMenu().menu();
-        playbackMenu.add(playbackChapterMenu);
-        playbackMenu.add(new JSeparator());
+        //playbackMenu.add(playbackChapterMenu);
+        //playbackMenu.add(new JSeparator());
 
         playbackRendererMenu = new JMenu(resource("menu.playback.item.renderer").name());
         playbackRendererMenu.setMnemonic(resource("menu.playback.item.renderer").mnemonic());
         playbackRendererMenu.add(new JMenuItem(playbackRendererLocalAction));
-        playbackMenu.add(playbackRendererMenu);
+        //playbackMenu.add(playbackRendererMenu);
 
-        playbackMenu.add(new JSeparator());
+        //playbackMenu.add(new JSeparator());
 
         playbackSpeedMenu = new JMenu(resource("menu.playback.item.speed").name());
         playbackSpeedMenu.setMnemonic(resource("menu.playback.item.speed").mnemonic());
@@ -325,10 +338,10 @@ public final class MainFrame extends BaseFrame {
             playbackMenu.add(new JMenuItem(action));
         }
         playbackMenu.add(new JSeparator());
-        for (Action action : mediaPlayerActions.playbackChapterActions()) {
-            playbackMenu.add(new JMenuItem(action));
-        }
-        playbackMenu.add(new JSeparator());
+//        for (Action action : mediaPlayerActions.playbackChapterActions()) {
+//            playbackMenu.add(new JMenuItem(action));
+//        }
+        //playbackMenu.add(new JSeparator());
         for (Action action : mediaPlayerActions.playbackControlActions()) {
             playbackMenu.add(new JMenuItem(action) { // FIXME need a standardmenuitem that disables the tooltip like this, very poor show...
                 @Override
@@ -370,19 +383,19 @@ public final class MainFrame extends BaseFrame {
         videoMenu.add(new JCheckBoxMenuItem(videoFullscreenAction));
         videoMenu.add(new JCheckBoxMenuItem(videoAlwaysOnTopAction));
         videoMenu.add(new JSeparator());
-        videoZoomMenu = new JMenu(resource("menu.video.item.zoom").name());
-        videoZoomMenu.setMnemonic(resource("menu.video.item.zoom").mnemonic());
-        addActions(mediaPlayerActions.videoZoomActions(), videoZoomMenu/*, true*/); // FIXME how to handle zoom 1:1 and fit to window - also, probably should not use addActions to select
-        videoMenu.add(videoZoomMenu);
-        videoAspectRatioMenu = new JMenu(resource("menu.video.item.aspectRatio").name());
-        videoAspectRatioMenu.setMnemonic(resource("menu.video.item.aspectRatio").mnemonic());
-        addActions(mediaPlayerActions.videoAspectRatioActions(), videoAspectRatioMenu, true);
-        videoMenu.add(videoAspectRatioMenu);
-        videoCropMenu = new JMenu(resource("menu.video.item.crop").name());
-        videoCropMenu.setMnemonic(resource("menu.video.item.crop").mnemonic());
-        addActions(mediaPlayerActions.videoCropActions(), videoCropMenu, true);
-        videoMenu.add(videoCropMenu);
-        videoMenu.add(new JSeparator());
+//        videoZoomMenu = new JMenu(resource("menu.video.item.zoom").name());
+//        videoZoomMenu.setMnemonic(resource("menu.video.item.zoom").mnemonic());
+//        addActions(mediaPlayerActions.videoZoomActions(), videoZoomMenu/*, true*/); // FIXME how to handle zoom 1:1 and fit to window - also, probably should not use addActions to select
+//        videoMenu.add(videoZoomMenu);
+//        videoAspectRatioMenu = new JMenu(resource("menu.video.item.aspectRatio").name());
+//        videoAspectRatioMenu.setMnemonic(resource("menu.video.item.aspectRatio").mnemonic());
+//        addActions(mediaPlayerActions.videoAspectRatioActions(), videoAspectRatioMenu, true);
+//        videoMenu.add(videoAspectRatioMenu);
+//        videoCropMenu = new JMenu(resource("menu.video.item.crop").name());
+//        videoCropMenu.setMnemonic(resource("menu.video.item.crop").mnemonic());
+//        addActions(mediaPlayerActions.videoCropActions(), videoCropMenu, true);
+//        videoMenu.add(videoCropMenu);
+//        videoMenu.add(new JSeparator());
         videoMenu.add(new JMenuItem(mediaPlayerActions.videoSnapshotAction()));
         videoMenu.add(new JSeparator());
         videoOutputMenu = new JMenu(resource("menu.video.item.output").name());
@@ -397,7 +410,7 @@ public final class MainFrame extends BaseFrame {
         subtitleTrackMenu = new SubtitleTrackMenu().menu();
 
         subtitleMenu.add(subtitleTrackMenu);
-        menuBar.add(subtitleMenu);
+        //menuBar.add(subtitleMenu);
 
         toolsMenu = new JMenu(resource("menu.tools").name());
         toolsMenu.setMnemonic(resource("menu.tools").mnemonic());
@@ -405,17 +418,17 @@ public final class MainFrame extends BaseFrame {
         toolsMenu.add(new JMenuItem(toolsMessagesAction));
         toolsMenu.add(new JSeparator());
         toolsMenu.add(new JMenuItem(toolsDebugAction));
-        menuBar.add(toolsMenu);
+        //menuBar.add(toolsMenu);
 
         viewMenu = new JMenu(resource("menu.view").name());
         viewMenu.setMnemonic(resource("menu.view").mnemonic());
         viewMenu.add(new JCheckBoxMenuItem(viewStatusBarAction));
-        menuBar.add(viewMenu);
+        //menuBar.add(viewMenu);
 
         helpMenu = new JMenu(resource("menu.help").name());
         helpMenu.setMnemonic(resource("menu.help").mnemonic());
         helpMenu.add(new JMenuItem(helpAboutAction));
-        menuBar.add(helpMenu);
+        //menuBar.add(helpMenu);
 
         setJMenuBar(menuBar);
 
@@ -452,6 +465,44 @@ public final class MainFrame extends BaseFrame {
         bottomPane.add(statusBar, BorderLayout.SOUTH);
 
         contentPane.add(bottomPane, BorderLayout.SOUTH);
+
+        studyItemsPane = new JPanel();
+
+        //Create the nodes.
+        DefaultMutableTreeNode top = new DefaultMutableTreeNode("Load study item...");
+
+        String studyItemsFile = System.getProperty("study.items.file", "classpath:/study-items.csv");
+        if (studyItemsFile.startsWith("classpath:")) {
+            studyItemsFile = this.getClass().getResource(studyItemsFile.replace("classpath:", "")).getPath();
+        }
+
+        System.out.println(studyItemsFile);
+        List<StudyItem> studyItemList = loadStudyItems(new File(studyItemsFile));
+        createNodes(top, studyItemList);
+
+        //Create a tree that allows one selection at a time.
+        JTree tree = new JTree(top);
+        tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+
+        studyItemsPane.add(tree);
+        tree.addTreeSelectionListener(event -> {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode)
+                    tree.getLastSelectedPathComponent();
+
+            if (node == null) return;
+
+            Object nodeInfo = node.getUserObject();
+            if (node.isLeaf()) {
+                StudyItem item = (StudyItem) nodeInfo;
+
+                String mrl = StringUtils.isEmpty(item.getLocalMediaLocation()) ?
+                        item.getMediaLocation() : item.getLocalMediaLocation();
+                application().mediaPlayer().media().play(mrl);
+                application().addRecentMedia(mrl);
+            }
+        });
+
+        contentPane.add(studyItemsPane, BorderLayout.WEST);
 
         MediaPlayerEventListener mediaPlayerEventListener = (new MediaPlayerEventAdapter() {
 
@@ -582,6 +633,50 @@ public final class MainFrame extends BaseFrame {
 
 //        setLogoAndMarquee(application().mediaPlayerComponent().mediaPlayer());
 //        setLogoAndMarquee(application().callbackMediaPlayerComponent().mediaPlayer());
+    }
+
+    private List<StudyItem> loadStudyItems(File file) {
+        List<StudyItem> list = new ArrayList<StudyItem>();
+
+        try {
+            FileReader filereader = new FileReader(file);
+
+            CSVParser parser = new CSVParserBuilder().withSeparator(',').build();
+            CSVReader csvReader = new CSVReaderBuilder(filereader)
+                    .withCSVParser(parser)
+                    .build();
+
+            List<String[]> allData = csvReader.readAll();
+
+            for (String[] row : allData) {
+                //System.out.println(row[2]);
+                StudyItem item = new StudyItem(row[0], row[1], row[2]);
+                if (row.length > 3) {
+                    item.setLocalMediaLocation(row[3]);
+                }
+                list.add(item);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    private void createNodes(DefaultMutableTreeNode top, List<StudyItem> studyItemList) {
+        Map<String, List<StudyItem>> groupedStudyItem = studyItemList.stream().collect(groupingBy(StudyItem::getCategory));
+        //System.out.println(groupedStudyItem.keySet());
+
+        for (String key: groupedStudyItem.keySet()) {
+            DefaultMutableTreeNode category = new DefaultMutableTreeNode(key);
+            top.add(category);
+
+            for (StudyItem item: groupedStudyItem.get(key)) {
+                category.add(new DefaultMutableTreeNode(item));
+            }
+        }
+
+        top.setUserObject("My Study Topics");
     }
 
     private ButtonGroup addActions(List<Action> actions, JMenu menu, boolean selectFirst) {
