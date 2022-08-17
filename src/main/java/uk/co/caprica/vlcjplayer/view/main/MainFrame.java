@@ -154,7 +154,7 @@ public final class MainFrame extends BaseFrame {
 
     private final JPanel bottomPane;
 
-    private final JPanel studyItemsPane;
+    private final JScrollPane studyItemsPane;
 
 //    private final MouseMovementDetector mouseMovementDetector;
 
@@ -466,8 +466,6 @@ public final class MainFrame extends BaseFrame {
 
         contentPane.add(bottomPane, BorderLayout.SOUTH);
 
-        studyItemsPane = new JPanel();
-
         //Create the nodes.
         DefaultMutableTreeNode top = new DefaultMutableTreeNode("Load study item...");
 
@@ -483,8 +481,6 @@ public final class MainFrame extends BaseFrame {
         //Create a tree that allows one selection at a time.
         JTree tree = new JTree(top);
         tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-
-        studyItemsPane.add(tree);
         tree.addTreeSelectionListener(event -> {
             DefaultMutableTreeNode node = (DefaultMutableTreeNode)
                     tree.getLastSelectedPathComponent();
@@ -502,6 +498,7 @@ public final class MainFrame extends BaseFrame {
             }
         });
 
+        studyItemsPane = new JScrollPane(tree);
         contentPane.add(studyItemsPane, BorderLayout.WEST);
 
         MediaPlayerEventListener mediaPlayerEventListener = (new MediaPlayerEventAdapter() {
