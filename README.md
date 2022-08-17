@@ -27,7 +27,7 @@ for item in lists:
 import pandas as pd
 
 df = pd.DataFrame(data, columns=['Category', 'Title', 'URL'])
-df.to_csv('study.csv', index=False, header=None)
+df.to_csv('study-items.csv', index=False, header=None)
 ```
 
 Sample output
@@ -38,17 +38,30 @@ Al-Kitab Al-Asasi vol. 1,Al Kitab Al Asasi Vol. 1 Lesson 3,https://www.youtube.c
 Al-Kitab Al-Asasi vol. 1,Al Kitab Al Asasi Vol. 1 Lesson 4,https://www.youtube.com/watch?v=9ZnyA5j9Dqs
 ```
 
-
-Set Study Item List file
+Build
 ----------
-While executing the Java application, set `study.items.file` properties.
-
-Example:
 ```
--Dstudy.items.file=c:\\dev\\vlcj-player\\study-items.csv
+mvn clean package
+```
+The dist package is at `./target/vlcj-player-2.0.0-SNAPSHOT-dist.zip` and `./target/vlcj-player-2.0.0-SNAPSHOT-dist.tar.gz`
+
+Decompress to appropriate directory and execute the application. While executing the Java application, set `study.items.file` properties.
+```
+cp ./target/vlcj-player-2.0.0-SNAPSHOT-dist.zip /tmp
+
+cd /tmp
+unzip vlcj-player-2.0.0-SNAPSHOT-dist.zip
+cd vlcj-player-2.0.0-SNAPSHOT
+
+java -Dstudy.items.file=c:\\dev\\vlcj-player\\study-items.csv -jar vlcj-player-2.0.0-SNAPSHOT.jar
 ```
 
 Screenshot
 ----------
 
-![vlcj-player](https://github.com/hafizur-rahman/vlcj-player/raw/master/doc/study-using-vlcj-player.png "vlcj-player")
+![vlcj-player](./doc/study-using-vlcj-player.png "vlcj-player")
+
+License
+-------
+
+The vlcj-player project is provided under the GPL, version 3 or later.
