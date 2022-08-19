@@ -24,15 +24,13 @@ import static uk.co.caprica.vlcjplayer.Application.application;
 import static uk.co.caprica.vlcjplayer.Application.resources;
 import static uk.co.caprica.vlcjplayer.view.action.Resource.resource;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
+import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.io.File;
-import java.io.FileReader;
+import java.io.*;
 import java.net.URL;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
@@ -50,6 +48,7 @@ import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import net.miginfocom.swing.MigLayout;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import uk.co.caprica.vlcj.media.TrackType;
 import uk.co.caprica.vlcj.player.base.LogoPosition;
@@ -161,7 +160,7 @@ public final class MainFrame extends BaseFrame {
     private final List<RendererItem> renderers = new ArrayList<>();
 
     public MainFrame() {
-        super("Study");
+        super("StudyBox");
 
         MediaPlayerActions mediaPlayerActions = application().mediaPlayerActions();
 
@@ -317,8 +316,8 @@ public final class MainFrame extends BaseFrame {
         //playbackMenu.add(playbackTitleMenu);
 
         playbackChapterMenu = new ChapterMenu().menu();
-        //playbackMenu.add(playbackChapterMenu);
-        //playbackMenu.add(new JSeparator());
+        playbackMenu.add(playbackChapterMenu);
+        playbackMenu.add(new JSeparator());
 
         playbackRendererMenu = new JMenu(resource("menu.playback.item.renderer").name());
         playbackRendererMenu.setMnemonic(resource("menu.playback.item.renderer").mnemonic());
@@ -469,13 +468,7 @@ public final class MainFrame extends BaseFrame {
         //Create the nodes.
         DefaultMutableTreeNode top = new DefaultMutableTreeNode("Load study item...");
 
-        String studyItemsFile = System.getProperty("study.items.file", "classpath:/study-items.csv");
-        if (studyItemsFile.startsWith("classpath:")) {
-            studyItemsFile = this.getClass().getResource(studyItemsFile.replace("classpath:", "")).getPath();
-        }
-
-        System.out.println(studyItemsFile);
-        List<StudyItem> studyItemList = loadStudyItems(new File(studyItemsFile));
+        List<StudyItem> studyItemList = loadStudyItems();
         createNodes(top, studyItemList);
 
         //Create a tree that allows one selection at a time.
@@ -497,6 +490,8 @@ public final class MainFrame extends BaseFrame {
                 application().addRecentMedia(mrl);
             }
         });
+
+        tree.setFont(tree.getFont().deriveFont(12));
 
         studyItemsPane = new JScrollPane(tree);
         contentPane.add(studyItemsPane, BorderLayout.WEST);
@@ -632,11 +627,22 @@ public final class MainFrame extends BaseFrame {
 //        setLogoAndMarquee(application().callbackMediaPlayerComponent().mediaPlayer());
     }
 
-    private List<StudyItem> loadStudyItems(File file) {
+    private List<StudyItem> loadStudyItems() {
         List<StudyItem> list = new ArrayList<StudyItem>();
 
+        String studyItemsFile = System.getProperty("study.items.file", "classpath:study-items.csv");
+        System.out.println(studyItemsFile);
+
+        Reader filereader = null;
         try {
-            FileReader filereader = new FileReader(file);
+            if (studyItemsFile.startsWith("classpath:")) {
+                studyItemsFile = studyItemsFile.replace("classpath:", "");
+
+                filereader = new InputStreamReader(
+                        getClass().getClassLoader().getResourceAsStream(studyItemsFile));
+            } else {
+                filereader = new InputStreamReader(new FileInputStream(studyItemsFile));
+            }
 
             CSVParser parser = new CSVParserBuilder().withSeparator(',').build();
             CSVReader csvReader = new CSVReaderBuilder(filereader)
@@ -646,7 +652,6 @@ public final class MainFrame extends BaseFrame {
             List<String[]> allData = csvReader.readAll();
 
             for (String[] row : allData) {
-                //System.out.println(row[2]);
                 StudyItem item = new StudyItem(row[0], row[1], row[2]);
                 if (row.length > 3) {
                     item.setLocalMediaLocation(row[3]);
@@ -655,6 +660,12 @@ public final class MainFrame extends BaseFrame {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            try {
+                IOUtils.close(filereader);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         return list;
@@ -664,7 +675,10 @@ public final class MainFrame extends BaseFrame {
         Map<String, List<StudyItem>> groupedStudyItem = studyItemList.stream().collect(groupingBy(StudyItem::getCategory));
         //System.out.println(groupedStudyItem.keySet());
 
-        for (String key: groupedStudyItem.keySet()) {
+        ArrayList<String> categories = new ArrayList<String>(groupedStudyItem.keySet());
+        Collections.sort(categories);
+
+        for (String key: categories) {
             DefaultMutableTreeNode category = new DefaultMutableTreeNode(key);
             top.add(category);
 
